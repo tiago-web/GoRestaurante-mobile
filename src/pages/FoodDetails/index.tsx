@@ -62,6 +62,16 @@ interface Food {
   extras: Extra[];
 }
 
+interface Favorite {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  category: number;
+  image_url: string;
+  thumbnail_url: string;
+}
+
 interface Order {
   product_id: number;
   name: string;
@@ -102,6 +112,18 @@ const FoodDetails: React.FC = () => {
     loadFood();
   }, [routeParams]);
 
+  useEffect(() => {
+    async function checkIsFoodFavorite(): Promise<void> {
+      const response = await api.get(`favorites/${routeParams.id}`);
+
+      if (!response.data) return;
+
+      setIsFavorite(true);
+    }
+
+    checkIsFoodFavorite();
+  }, [routeParams]);
+
   function handleIncrementExtra(id: number): void {
     setExtras(
       extras.map(extra =>
@@ -136,10 +158,30 @@ const FoodDetails: React.FC = () => {
 
   const toggleFavorite = useCallback(() => {
     // Toggle if food is favorite or not
+    const {
+      id,
+      name,
+      description,
+      price,
+      category,
+      image_url,
+      thumbnail_url,
+    } = food;
+
+    const favorite: Favorite = {
+      id,
+      name,
+      description,
+      price,
+      category,
+      image_url,
+      thumbnail_url,
+    };
+
     if (isFavorite) {
       api.delete(`favorites/${food.id}`);
     } else {
-      api.post('favorites', food);
+      api.post('favorites', favorite);
     }
 
     setIsFavorite(!isFavorite);
@@ -152,13 +194,16 @@ const FoodDetails: React.FC = () => {
 
     const foodTotal = food.price;
 
-    return formatValue((extraTotal + foodTotal) * foodQuantity);
+    return (extraTotal + foodTotal) * foodQuantity;
   }, [extras, food, foodQuantity]);
 
   async function handleFinishOrder(): Promise<void> {
-    // Finish the order and save on the API
     const order: Order = {
-      ...food,
+      name: food.name,
+      description: food.description,
+      price: Number(cartTotal.toFixed(2)),
+      category: food.category,
+      thumbnail_url: food.thumbnail_url,
       product_id: food.id,
       extras: [...extras],
     };
@@ -240,7 +285,9 @@ const FoodDetails: React.FC = () => {
         <TotalContainer>
           <Title>Total do pedido</Title>
           <PriceButtonContainer>
-            <TotalPrice testID="cart-total">{cartTotal}</TotalPrice>
+            <TotalPrice testID="cart-total">
+              {formatValue(cartTotal)}
+            </TotalPrice>
             <QuantityContainer>
               <Icon
                 size={15}
